@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Error {{ code }}{% endblock %}
+{% block page_title %}Error{% endblock %}
+{% block content %}
+<div style="text-align:center;padding:80px 0">
+  <div style="font-size:72px;font-weight:800;color:var(--border);line-height:1">{{ code }}</div>
+  <div style="font-size:20px;font-weight:700;color:var(--text);margin:12px 0 8px">{{ message }}</div>
+  <div style="color:var(--muted);margin-bottom:24px">Something went wrong. Please try again.</div>
+  <a href="/" class="btn btn-primary"><i class="ti ti-home"></i> Back to Dashboard</a>
+</div>
+{% endblock %}

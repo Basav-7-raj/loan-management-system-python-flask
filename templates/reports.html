@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block page_title %}Reports & Analytics{% endblock %}
+
+{% block content %}
+<div class="metric-grid">
+  <div class="metric blue">
+    <div class="metric-icon" style="color:var(--blue2)"><i class="ti ti-file-invoice"></i></div>
+    <div class="metric-label">Total Loans</div>
+    <div class="metric-value">{{ total_loans }}</div>
+  </div>
+  <div class="metric green">
+    <div class="metric-icon" style="color:var(--green)"><i class="ti ti-currency-rupee"></i></div>
+    <div class="metric-label">Total Disbursed</div>
+    <div class="metric-value">₹{{ "{:,.0f}".format(total_disbursed) }}</div>
+  </div>
+  <div class="metric green">
+    <div class="metric-icon" style="color:var(--green)"><i class="ti ti-circle-check"></i></div>
+    <div class="metric-label">Total Recovered</div>
+    <div class="metric-value">₹{{ "{:,.0f}".format(total_recovered) }}</div>
+  </div>
+  <div class="metric red">
+    <div class="metric-icon" style="color:var(--red)"><i class="ti ti-alert-triangle"></i></div>
+    <div class="metric-label">Overdue Amount</div>
+    <div class="metric-value" style="color:var(--red)">₹{{ "{:,.0f}".format(overdue_amount) }}</div>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <div class="card-header">Loans by Type</div>
+    <div style="position:relative;height:230px">
+      <canvas id="typeChart"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">Loans by Status</div>
+    <div style="position:relative;height:230px">
+      <canvas id="statusChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    Disbursement by Loan Type
+    <span class="sub">All time</span>
+  </div>
+  <table>
+    <thead><tr><th>Loan Type</th><th>Count</th><th>Total Disbursed</th><th>Total Recovered</th><th>Recovery Rate</th></tr></thead>
+    <tbody>
+      {% for row in by_type %}
+      {% set rate = (row.recovered / row.total * 100) if row.total > 0 else 0 %}
+      <tr>
+        <td><strong>{{ row.loan_type }}</strong></td>
+        <td><span class="badge badge-info">{{ row.cnt }}</span></td>
+        <td>₹{{ "{:,.0f}".format(row.total) }}</td>
+        <td style="color:var(--green)">₹{{ "{:,.0f}".format(row.recovered) }}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:10px;min-width:120px">
+            <div style="flex:1">
+              <div class="progress"><div class="progress-fill" style="width:{{ rate|round }}%;background:var(--green)"></div></div>
+            </div>
+            <span style="font-size:12px;font-weight:600;color:var(--text2);min-width:36px">{{ rate|round(1) }}%</span>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if top_borrowers %}
+<div class="card">
+  <div class="card-header">Top Borrowers by Volume</div>
+  <table>
+    <thead><tr><th>#</th><th>Borrower</th><th>Loans</th><th>Total Borrowed</th></tr></thead>
+    <tbody>
+      {% for b in top_borrowers %}
+      <tr>
+        <td style="color:var(--muted);font-size:13px">{{ loop.index }}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:30px;height:30px;border-radius:50%;background:var(--blue-light);color:var(--blue);
+                        display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">
+              {{ b.name[:2].upper() }}
+            </div>
+            <strong>{{ b.name }}</strong>
+          </div>
+        </td>
+        <td><span class="badge badge-info">{{ b.loans }}</span></td>
+        <td style="font-weight:600">₹{{ "{:,.0f}".format(b.total) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<script>
+const typeData   = {{ by_type   | tojson }};
+const statusData = {{ by_status | tojson }};
+const colors     = ['#1847C4','#16A34A','#92570A','#C62828','#6B21A8','#0891b2','#475569'];
+
+new Chart(document.getElementById('typeChart'), {
+  type: 'doughnut',
+  data: {
+    labels: typeData.map(r=>r.loan_type),
+    datasets: [{ data: typeData.map(r=>r.cnt), backgroundColor: colors.slice(0,typeData.length), borderWidth: 0, hoverOffset:6 }]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:false, cutout:'58%',
+    plugins: { legend:{ position:'right', labels:{ font:{size:12,family:'Plus Jakarta Sans'}, boxWidth:12, padding:12 } } }
+  }
+});
+
+const statusColors = statusData.map(r =>
+  r.status==='Active'?'#16A34A': r.status==='Overdue'?'#C62828': r.status==='Closed'?'#7A869A':
+  r.status==='Approved'?'#1847C4': r.status==='Pending'?'#92570A': '#475569'
+);
+new Chart(document.getElementById('statusChart'), {
+  type: 'bar',
+  data: {
+    labels: statusData.map(r=>r.status),
+    datasets: [{ label:'Loans', data:statusData.map(r=>r.cnt), backgroundColor:statusColors, borderRadius:6 }]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false} },
+    scales:{
+      x:{ grid:{display:false}, ticks:{font:{size:12,family:'Plus Jakarta Sans'}} },
+      y:{ grid:{color:'rgba(0,0,0,.05)'}, ticks:{font:{size:11},stepSize:1} }
+    }
+  }
+});
+</script>
+{% endblock %}

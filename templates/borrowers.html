@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Borrowers{% endblock %}
+{% block page_title %}Borrowers{% endblock %}
+{% block topbar_actions %}
+  {% if can_write %}
+  <button class="btn btn-primary" onclick="document.getElementById('addModal').classList.add('open')">
+    <i class="ti ti-user-plus"></i> Add Borrower
+  </button>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <form method="get" style="display:flex;gap:10px">
+    <input name="q" value="{{ q }}" placeholder="Search name, phone, or email…" style="max-width:280px">
+    <button class="btn" type="submit"><i class="ti ti-search"></i> Search</button>
+    {% if q %}<a href="/borrowers" class="btn"><i class="ti ti-x"></i> Clear</a>{% endif %}
+  </form>
+  <span class="spacer"></span>
+  <span style="font-size:12px;color:var(--muted)">{{ borrowers|length }} borrower{% if borrowers|length!=1 %}s{% endif %}</span>
+</div>
+
+<div class="card" style="padding:0;overflow:hidden">
+  {% if borrowers %}
+  <table>
+    <thead>
+      <tr><th>Borrower</th><th>Phone</th><th>Loans</th><th>Total Borrowed</th><th>Outstanding</th><th>Credit Score</th><th>Status</th>
+      {% if current_role == 'Admin' %}<th></th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in borrowers %}
+      {% set outstanding = b.outstanding if b.outstanding else 0 %}
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:11px">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--blue-light);color:var(--blue);
+                        display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0">
+              {{ b.name[:2].upper() }}
+            </div>
+            <div>
+              <div style="font-weight:600">{{ b.name }}</div>
+              <div style="font-size:11.5px;color:var(--muted)">{{ b.email or '—' }}</div>
+            </div>
+          </div>
+        </td>
+        <td style="color:var(--text2)">{{ b.phone or '—' }}</td>
+        <td><span class="badge badge-info">{{ b.loan_count }}</span></td>
+        <td style="font-weight:500">₹{{ "{:,.0f}".format(b.total_borrowed) }}</td>
+        <td>
+          {% if outstanding > 0 %}
+          <span style="font-weight:600;color:var(--amber)">₹{{ "{:,.0f}".format(outstanding) }}</span>
+          {% else %}
+          <span style="color:var(--green)">₹0</span>
+          {% endif %}
+        </td>
+        <td>
+          {% set score = b.credit_score %}
+          {% if score >= 750 %}<span class="badge badge-success">{{ score }} Excellent</span>
+          {% elif score >= 700 %}<span class="badge badge-info">{{ score }} Good</span>
+          {% elif score >= 650 %}<span class="badge badge-warning">{{ score }} Average</span>
+          {% else %}<span class="badge badge-danger">{{ score }} Poor</span>{% endif %}
+        </td>
+        <td>
+          {% if outstanding <= 0 and b.loan_count > 0 %}<span class="badge badge-success">Cleared</span>
+          {% elif b.loan_count == 0 %}<span class="badge badge-muted">No Loans</span>
+          {% else %}<span class="badge badge-info">Active</span>{% endif %}
+        </td>
+        {% if current_role == 'Admin' %}
+        <td>
+          {% if b.loan_count == 0 %}
+          <form method="post" action="/borrowers/delete/{{ b.id }}" onsubmit="return confirm('Delete {{ b.name }}?')">
+            <button class="btn btn-xs btn-danger" type="submit"><i class="ti ti-trash"></i></button>
+          </form>
+          {% endif %}
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty"><i class="ti ti-users-off"></i> No borrowers found.</div>
+  {% endif %}
+</div>
+
+<!-- Add Borrower Modal -->
+<div class="modal-bg" id="addModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-title">
+      <span><i class="ti ti-user-plus" style="margin-right:8px;color:var(--blue)"></i>Add Borrower</span>
+      <button class="btn btn-sm" onclick="document.getElementById('addModal').classList.remove('open')"><i class="ti ti-x"></i></button>
+    </div>
+    <form method="post" action="/borrowers/add">
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Full Name *</label>
+          <input name="name" placeholder="Devaraj G. Bilagundi" required>
+        </div>
+        <div class="form-group">
+          <label>Phone Number</label>
+          <input name="phone" placeholder="9876543210" type="tel">
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input name="email" type="email" placeholder="name@email.com">
+        </div>
+        <div class="form-group full">
+          <label>Address</label>
+          <input name="address" placeholder="City, State">
+        </div>
+        <div class="form-group">
+          <label>Credit Score (300–900)</label>
+          <input name="credit_score" type="number" min="300" max="900" value="700">
+        </div>
+        <div class="form-group" style="justify-content:flex-end;padding-top:16px">
+          <div id="creditHelp" style="font-size:11.5px;color:var(--muted)">
+            <span style="color:var(--green)">750+ Excellent</span> ·
+            <span style="color:var(--blue)">700+ Good</span> ·
+            <span style="color:var(--amber)">650+ Average</span> ·
+            <span style="color:var(--red)">Below 650 Poor</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" type="button" onclick="document.getElementById('addModal').classList.remove('open')">Cancel</button>
+        <button class="btn btn-primary" type="submit"><i class="ti ti-user-plus"></i> Add Borrower</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
