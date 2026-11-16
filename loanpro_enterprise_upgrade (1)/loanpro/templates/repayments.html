@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Repayments{% endblock %}
+{% block page_title %}Repayments{% endblock %}
+
+{% block content %}
+<div class="two-col">
+  <div class="card">
+    <div class="card-header">
+      Active Loans — EMI Tracker
+      <span class="sub">{{ upcoming|length }} loans</span>
+    </div>
+    {% if upcoming %}
+    <table>
+      <thead>
+        <tr><th>Loan</th><th>Borrower</th><th>EMI</th><th>Paid</th><th>Remaining</th><th>Status</th>
+        {% if can_write %}<th></th>{% endif %}</tr>
+      </thead>
+      <tbody>
+        {% for loan in upcoming %}
+        {% set remaining = [loan.amount - loan.amount_paid, 0]|max %}
+        <tr>
+          <td><code>{{ loan.loan_id }}</code></td>
+          <td style="font-weight:500">{{ loan.borrower_name }}</td>
+          <td>₹{{ "{:,.0f}".format(loan.emi) }}</td>
+          <td style="color:var(--green)">₹{{ "{:,.0f}".format(loan.amount_paid) }}</td>
+          <td style="font-weight:600;color:{% if loan.status=='Overdue' %}var(--red){% else %}var(--text2){% endif %}">
+            ₹{{ "{:,.0f}".format(remaining) }}
+          </td>
+          <td>
+            {% if loan.status == 'Overdue' %}<span class="badge badge-danger">Overdue</span>
+            {% elif loan.status == 'Active' %}<span class="badge badge-success">Active</span>
+            {% else %}<span class="badge badge-info">{{ loan.status }}</span>{% endif %}
+          </td>
+          {% if can_write %}
+          <td>
+            <button class="btn btn-sm btn-primary" onclick="openPay({{ loan.id }}, '{{ loan.loan_id }}', {{ loan.emi }}, {{ remaining }})">
+              <i class="ti ti-cash"></i> Pay
+            </button>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty"><i class="ti ti-calendar-off"></i> No active loans.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      Payment History
+      <span class="sub">Last 30 transactions</span>
+    </div>
+    {% if history %}
+    <table>
+      <thead><tr><th>Date</th><th>Loan</th><th>Borrower</th><th>Amount</th><th>Note</th></tr></thead>
+      <tbody>
+        {% for p in history %}
+        <tr>
+          <td style="font-size:12px;color:var(--muted);white-space:nowrap">{{ p.payment_date }}</td>
+          <td><code>{{ p.loan_id }}</code></td>
+          <td style="font-weight:500">{{ p.borrower_name }}</td>
+          <td style="color:var(--green);font-weight:600">₹{{ "{:,.0f}".format(p.amount) }}</td>
+          <td style="color:var(--muted);font-size:12px">{{ p.note or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty"><i class="ti ti-receipt-off"></i> No payment history yet.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Pay Modal -->
+<div class="modal-bg" id="payModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-title">
+      <span><i class="ti ti-cash" style="margin-right:8px;color:var(--green)"></i>Record Payment</span>
+      <button class="btn btn-sm" onclick="document.getElementById('payModal').classList.remove('open')"><i class="ti ti-x"></i></button>
+    </div>
+    <form method="post" id="payForm">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Loan ID</label>
+          <input id="payLoanId" readonly style="background:var(--surface2)">
+        </div>
+        <div class="form-group">
+          <label>Amount (₹) *</label>
+          <input name="amount" type="number" id="payAmount" required min="1" step="0.01">
+        </div>
+        <div class="form-group full" id="payInfo" style="font-size:12.5px;color:var(--muted)"></div>
+        <div class="form-group full">
+          <label>Note</label>
+          <input name="note" placeholder="e.g. EMI Month 4, Prepayment, etc.">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" type="button" onclick="document.getElementById('payModal').classList.remove('open')">Cancel</button>
+        <button class="btn btn-primary" type="submit"><i class="ti ti-check"></i> Record Payment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openPay(id, loanId, emi, remaining) {
+  document.getElementById('payForm').action = '/loans/' + id + '/pay';
+  document.getElementById('payLoanId').value  = loanId;
+  document.getElementById('payAmount').value  = Math.round(emi);
+  document.getElementById('payAmount').max    = remaining;
+  document.getElementById('payInfo').innerHTML =
+    '<i class="ti ti-info-circle"></i> Outstanding balance: <strong style="color:var(--text)">₹' +
+    Math.round(remaining).toLocaleString('en-IN') +
+    '</strong> &nbsp;·&nbsp; Monthly EMI: <strong style="color:var(--text)">₹' +
+    Math.round(emi).toLocaleString('en-IN') + '</strong>';
+  document.getElementById('payModal').classList.add('open');
+}
+</script>
+{% endblock %}
